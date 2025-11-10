@@ -1,0 +1,249 @@
+openapi: 3.0.3
+info:
+  title: Template Service API
+  version: 1.0.0
+  description: >
+    A microservice for managing and rendering notification templates
+    used by the Distributed Notification System.  
+    Supports CRUD operations and variable substitution via Jinja2.
+
+servers:
+  - url: http://localhost:5000/api/v1
+
+tags:
+  - name: Templates
+    description: Manage and render notification templates
+
+paths:
+  /api/v1/templates:
+    get:
+      tags: [Templates]
+      summary: List all templates
+      description: Retrieve all stored templates with optional pagination.
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema: { type: integer, default: 1 }
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, default: 10 }
+      responses:
+        '200':
+          description: A list of templates
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TemplatesListResponse'
+    post:
+      tags: [Templates]
+      summary: Create a new template
+      description: Add a new template for email or push notifications.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TemplateCreateRequest'
+      responses:
+        '201':
+          description: Template created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TemplateResponse'
+        '400':
+          description: Invalid input
+
+  /api/v1/templates/{template_code}:
+    get:
+      tags: [Templates]
+      summary: Get a template by code
+      parameters:
+        - name: template_code
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Template retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TemplateResponse'
+        '404':
+          description: Template not found
+
+    put:
+      tags: [Templates]
+      summary: Update an existing template
+      parameters:
+        - name: template_code
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TemplateUpdateRequest'
+      responses:
+        '200':
+          description: Template updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TemplateResponse'
+        '404':
+          description: Template not found
+
+    delete:
+      tags: [Templates]
+      summary: Delete a template by code
+      parameters:
+        - name: template_code
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Template deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BaseResponse'
+        '404':
+          description: Template not found
+
+  /templates/render:
+    post:
+      tags: [Templates]
+      summary: Render a template with variables
+      description: Render an existing template by substituting variables.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TemplateRenderRequest'
+      responses:
+        '200':
+          description: Template rendered successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TemplateRenderResponse'
+        '400':
+          description: Invalid template or missing variables
+
+components:
+  schemas:
+    TemplateBase:
+      type: object
+      properties:
+        template_code:
+          type: string
+          example: welcome_email
+        notification_type:
+          type: string
+          enum: [email, push]
+        body_html:
+          type: string
+          example: "<p>Hello {{ name }}, welcome to Framez!</p>"
+        body_text:
+          type: string
+          example: "Hello {{ name }}, welcome to Framez!"
+        placeholders:
+          type: array
+          items:
+            type: string
+          example: ["name"]
+
+    TemplateCreateRequest:
+      allOf:
+        - $ref: '#/components/schemas/TemplateBase'
+
+    TemplateUpdateRequest:
+      type: object
+      properties:
+        body_html:
+          type: string
+        body_text:
+          type: string
+        placeholders:
+          type: array
+          items: { type: string }
+
+    TemplateRenderRequest:
+      type: object
+      required: [template_code, variables]
+      properties:
+        template_code:
+          type: string
+          example: welcome_email
+        variables:
+          type: object
+          additionalProperties: true
+          example:
+            name: "Ada Lovelace"
+
+    TemplateRenderResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          properties:
+            rendered_html:
+              type: string
+              example: "<p>Hello Ada Lovelace, welcome to Framez!</p>"
+            rendered_text:
+              type: string
+              example: "Hello Ada Lovelace, welcome to Framez!"
+        message:
+          type: string
+          example: "Rendered successfully"
+
+    TemplateResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          $ref: '#/components/schemas/TemplateBase'
+        message:
+          type: string
+          example: Template retrieved successfully
+
+    TemplatesListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/TemplateBase'
+        meta:
+          type: object
+          properties:
+            total:
+              type: integer
+              example: 2
+        message:
+          type: string
+          example: Templates retrieved successfully
+
+    BaseResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
