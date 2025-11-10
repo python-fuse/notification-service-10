@@ -1,3 +1,12 @@
+import {
+  IsString,
+  IsNotEmpty,
+  IsIn,
+  IsObject,
+  ValidateNested,
+} from 'class-validator';
+import { Type } from 'class-transformer';
+
 // {
 //   "user_id": "12345",
 //   "channel": "email",
@@ -8,12 +17,20 @@
 // }
 
 export class NotificationDto {
+  @IsString()
+  @IsNotEmpty()
   user_id: string;
-  channel: string;
-  template_code: string;
-  data: Record<string, any>;
 
-  constructor(partial: Partial<NotificationDto>) {
-    Object.assign(this, partial);
-  }
+  @IsString()
+  @IsNotEmpty()
+  @IsIn(['email', 'push'])
+  channel: string;
+
+  @IsString()
+  @IsNotEmpty()
+  template_code: string;
+
+  @IsObject()
+  @IsNotEmpty()
+  data: Record<string, any>;
 }
