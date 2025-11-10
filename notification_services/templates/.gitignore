@@ -4,3 +4,4 @@ __pycache__/
 Lib/
 Lib/site-packages/
 Lib/site-packages
+migrations/

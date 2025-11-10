@@ -37,4 +37,4 @@ class TemplateVersion(db.Model):
         return f'<TemplateVersion {self.template_id} v{self.version_number}>'
 
 
-    # template = db.relationship("Template", back_populates="versions")
+    template = db.relationship("Template", back_populates="versions")

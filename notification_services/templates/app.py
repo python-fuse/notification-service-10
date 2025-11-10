@@ -5,6 +5,8 @@ from flask_migrate import Migrate
 from models import Template, TemplateVersion
 from config import Config
 from database import db
+from routes.templates import template_bp
+
 
 def create_app():
     app = Flask(__name__)
@@ -26,6 +28,9 @@ def create_app():
         config={'app_name': "Template Service"}
     )
     app.register_blueprint(swaggerui_blueprint, url_prefix=SWAGGER_URL)
+
+    app.register_blueprint(template_bp, url_prefix='/api/v1/templates')
+
 
     # Health check endpoint
     @app.route('/health')

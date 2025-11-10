@@ -15,7 +15,7 @@ tags:
     description: Manage and render notification templates
 
 paths:
-  /templates:
+  /api/v1/templates:
     get:
       tags: [Templates]
       summary: List all templates
@@ -56,7 +56,7 @@ paths:
         '400':
           description: Invalid input
 
-  /templates/{template_code}:
+  /api/v1/templates/{template_code}:
     get:
       tags: [Templates]
       summary: Get a template by code
