@@ -1,74 +1,71 @@
-import { Inject, Injectable } from '@nestjs/common';
-import { CACHE_MANAGER } from '@nestjs/cache-manager';
-import type { Cache } from 'cache-manager';
+import { Inject, Injectable, OnModuleInit, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { ClientProxy } from '@nestjs/microservices';
+
+export interface NotificationMessage {
+  request_id: string;
+  user_id: string;
+  email?: string;
+  push_token?: string;
+  channel: 'email' | 'push';
+  subject?: string;
+  body: string;
+  data?: Record<string, any>;
+  timestamp: string;
+  correlationId?: string;
+  attempts?: number;
+  template_code: string;
+}
 
 @Injectable()
-export class RabbitmqService {
-  constructor(@Inject(CACHE_MANAGER) private cacheManager: Cache) {}
+export class RabbitMQService implements OnModuleInit {
+  private readonly logger = new Logger(RabbitMQService.name);
 
-  //Idempotency check
-  async getIdempotencyResponse(requestId: string): Promise<any> {
-    return await this.cacheManager.get(`idempotency:${requestId}`);
-  }
+  constructor(
+    @Inject('RABBITMQ_SERVICE') private client: ClientProxy,
+    private config: ConfigService,
+  ) {}
 
-  //   set idempotency response
-  async setIdempotencyResponse(
-    requestId: string,
-    response: any,
-    ttl: number = 86400,
-  ): Promise<void> {
-    await this.cacheManager.set(`idempotency:${requestId}`, response, ttl);
-  }
-
-  //   Rate limiting
-  async incrementRateLimit(userId: string, window: string): Promise<number> {
-    const key = `rate_limit:${userId}:${window}`;
-    let current = (await this.cacheManager.get<number>(key)) || 0;
-    const newValue = current + 1;
-
-    if (current === 0) {
-      await this.cacheManager.set(key, newValue, 3600);
-    } else {
-      await this.cacheManager.set(key, newValue);
+  async onModuleInit() {
+    try {
+      await this.client.connect();
+      this.logger.log('Successfully connected to RabbitMQ');
+    } catch (error) {
+      this.logger.error('Failed to connect to RabbitMQ', error);
+      // Don't throw - allow the app to start even if RabbitMQ is not available
+      // The connection will be attempted again when sending messages
     }
-
-    return newValue;
   }
 
-  async getRateLimit(userId: string, window: string): Promise<number> {
-    const key = `rate_limit:${userId}:${window}`;
-    const current = (await this.cacheManager.get<number>(key)) || 0;
-    return current;
+  // Send message to email queue
+  async publishToEmailQueue(message: NotificationMessage): Promise<void> {
+    try {
+      const queue = this.config.get<string>('RABBITMQ_QUEUE_EMAIL');
+      this.client.emit(queue, message);
+      this.logger.log(
+        `Published message to email queue: ${message.request_id}`,
+      );
+    } catch (error) {
+      this.logger.error('Failed to publish to email queue', error);
+      throw error;
+    }
   }
 
-  //   status caching
-  async cacheStatus(requestId: string, status: any, ttl = 3600): Promise<void> {
-    await this.cacheManager.set(`status${requestId}`, status, ttl);
+  // Send message to push notification queue
+  async publishToPushQueue(message: NotificationMessage): Promise<void> {
+    try {
+      const queue = this.config.get<string>('RABBITMQ_QUEUE_PUSH');
+      this.client.emit(queue, message);
+      this.logger.log(`Published message to push queue: ${message.request_id}`);
+    } catch (error) {
+      this.logger.error('Failed to publish to push queue', error);
+      throw error;
+    }
   }
 
-  async getCachedStatus(requestId: string): Promise<any> {
-    return await this.cacheManager.get(`status${requestId}`);
-  }
-
-  //   user data caching
-  async cacheUser(userId: string, data: any, ttl = 300): Promise<void> {
-    await this.cacheManager.set(`user:${userId}`, data, ttl);
-  }
-
-  async getCachedUser(userId: string): Promise<any> {
-    return await this.cacheManager.get(`user:${userId}`);
-  }
-
-  //   template data caching
-  async cacheTemplate(
-    templateCode: string,
-    data: any,
-    ttl = 600,
-  ): Promise<void> {
-    await this.cacheManager.set(`template:${templateCode}`, data, ttl);
-  }
-
-  async getCachedTemplate(templateCode: string): Promise<any> {
-    return await this.cacheManager.get(`template:${templateCode}`);
-  }
+  // // listen to status updates
+  // listenToStatusQueue(callback:(data:any)=>void) {
+  //   const queue = this.config.get<string>('RABBITMQ_QUEUE_STATUS');
+  //   return this.client.
+  // }
 }
