@@ -4,4 +4,6 @@ import { NotificationDto } from './notifications.dto';
 @Injectable()
 export class NotificationsService {
   initiateNotification(notification: NotificationDto) {}
+
+  getStatus(requestId: string) {}
 }
