@@ -14,11 +14,11 @@ export class NotificationRequest {
 
   @Column({ unique: true })
   @Index()
-  requestId: string;
+  request_id: string;
 
   @Column()
   @Index()
-  userId: string;
+  user_id: string;
 
   @Column()
   channel: string;
@@ -32,6 +32,9 @@ export class NotificationRequest {
 
   @Column({ type: 'jsonb', nullable: true })
   data: Record<string, any>;
+
+  @Column({ type: 'text', nullable: true })
+  error_message: string;
 
   @CreateDateColumn()
   created_at: Date;
