@@ -78,7 +78,7 @@ services:
   # # Optional: example service stubs to run in Docker
   # gateway:
   #   build:
-  #     context: ./services/gateway-nest
+  #     context: ./notification_services/gateway-nest
   #   container_name: gateway
   #   env_file:
   #     - .env
@@ -91,7 +91,7 @@ services:
 
   # user_service:
   #   build:
-  #     context: ./services/user-nest
+  #     context: ./notification_services/user-nest
   #   container_name: user_service
   #   env_file:
   #     - .env
@@ -100,20 +100,20 @@ services:
   #   depends_on:
   #     - postgres_user
 
-  # template_service:
-  #   build:
-  #     context: ./services/template-flask
-  #   container_name: template_service
-  #   env_file:
-  #     - .env
-  #   ports:
-  #     - "8000:8000"
-  #   depends_on:
-  #     - postgres_template
+  template_service:
+    build:
+      context: ./notification_services/templates
+    container_name: template_service
+    env_file:
+      - .env
+    ports:
+      - "5000:5000"
+    depends_on:
+      - postgres_template
 
   # worker:
   #   build:
-  #     context: ./services/worker-spring
+  #     context: ./notification_services/worker-spring
   #   container_name: worker
   #   env_file:
   #     - .env
