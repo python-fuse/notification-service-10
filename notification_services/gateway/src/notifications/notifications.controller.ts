@@ -6,6 +6,7 @@ import {
   Post,
   Get,
   Query,
+  UseGuards,
 } from '@nestjs/common';
 import {
   NotificationDto,
@@ -20,6 +21,7 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
+import { RateLimitGuard } from 'src/guards/rate-limit.guard';
 
 @ApiTags('notifications')
 @Controller('api/v1/notifications')
@@ -27,6 +29,7 @@ export class NotificationsController {
   constructor(private readonly notificationsService: NotificationsService) {} //     {
 
   @Post('send')
+  @UseGuards(RateLimitGuard)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Send notification',
