@@ -1,6 +1,7 @@
 import { Injectable, Logger, NestMiddleware } from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';
 import { RedisService } from 'src/redis/redis.service';
+import uuid from 'uuid';
 
 @Injectable()
 export class IdempotencyMiddleware implements NestMiddleware {
@@ -14,6 +15,7 @@ export class IdempotencyMiddleware implements NestMiddleware {
 
     if (!requestId) {
       this.logger.warn('No idempotency key found in request headers');
+
       return next();
     }
 

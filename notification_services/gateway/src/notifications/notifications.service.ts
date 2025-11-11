@@ -23,9 +23,7 @@ export class NotificationsService {
     private readonly rabbitMQService: RabbitMQService,
   ) {}
 
-  async initiateNotification(dto: NotificationDto) {
-    const requestId = uuid();
-
+  async initiateNotification(dto: NotificationDto, requestId: string) {
     try {
       // CHeck idempotency
       const cached = await this.redisService.getIdempotencyResponse(requestId);

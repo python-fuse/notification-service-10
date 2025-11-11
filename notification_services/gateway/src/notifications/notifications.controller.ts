@@ -7,6 +7,8 @@ import {
   Get,
   Query,
   UseGuards,
+  Headers,
+  HttpException,
 } from '@nestjs/common';
 import {
   NotificationDto,
@@ -47,9 +49,28 @@ export class NotificationsController {
     description: 'Rate limit exceeded',
   })
   @UseGuards(RateLimitGuard)
-  async initiateNotification(@Body() notificationDto: NotificationDto) {
+  async initiateNotification(
+    @Body() notificationDto: NotificationDto,
+    @Headers('x-request-id') requestId?: string,
+  ) {
+    if (!requestId) {
+      throw new HttpException(
+        {
+          success: false,
+          message: 'x-request-id header is required for idempotency',
+          error: 'MISSING_REQUEST_ID',
+          data: null,
+          meta: {
+            reason:
+              'No x-request-id provided. Request cannot be safely retried.',
+          },
+        },
+        HttpStatus.BAD_REQUEST,
+      );
+    }
     return await this.notificationsService.initiateNotification(
       notificationDto,
+      requestId,
     );
   }
 
