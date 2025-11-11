@@ -61,7 +61,7 @@ public class EmailProcessingService {
                         sent = true;
                         break;
                     } else {
-                        log.warn("SendGrid returned non-2xx, will retry if attempts remain.");
+                        log.warn("SendGrid returned an error, will retry if attempts remain.");
                     }
                 } catch (Exception ex) {
                     log.error("Error sending email on attempt {}: {}", attempt, ex.getMessage());
@@ -80,7 +80,11 @@ public class EmailProcessingService {
         } catch (Exception e) {
             log.error("Unhandled exception processing email {}: {}", request.request_id(), e.getMessage(), e);
             // best effort: update failed and push to dead-letter
-            try { statusClient.updateStatus(request.request_id(), "failed"); } catch (Exception ex) { log.warn("Failed to update status: {}", ex.getMessage()); }
+            try {
+                statusClient.updateStatus(request.request_id(), "failed");
+            } catch (Exception ex) {
+                log.warn("Failed to update status: {}", ex.getMessage());
+            }
             rabbitTemplate.convertAndSend(EMAIL_EXCHANGE, FAILED_ROUTING_KEY, request);
         } finally {
             MDC.remove("correlation_id");

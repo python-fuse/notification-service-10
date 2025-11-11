@@ -21,7 +21,7 @@ public class TemplateClient {
                 .uri("/templates/{code}", templateCode)
                 .retrieve()
                 .bodyToMono(TemplateResponseDto.class)
-                .block(); // synchronous for simplicity
+                .block();
         if (resp == null || !resp.success()) {
             throw new RuntimeException("Template service returned error or null");
         }
