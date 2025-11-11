@@ -1,0 +1,51 @@
+spring:
+  application:
+    name: email_service
+
+rabbitmq:
+  host: localhost
+  port: 5672
+  username: guest
+  password: guest
+  queue:
+    email: email.queue
+    failed: failed.queue
+    exchange: email.exchange
+    routing-key: email.routing.key
+    failed-routing-key: failed.routing.key
+
+sendgrid:
+  api-key: ${SENDGRID_API_KEY}
+  from-email: ${SENDGRID_EMAIL}
+  timeout-ms: 5000
+
+template:
+  service-url: http://template-service
+
+notification:
+  service-url: http://notification-service
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      sendGridCircuit:
+        registerHealthIndicator: true
+        slidingWindowType: COUNT_BASED
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 2
+        failureRateThreshold: 50
+        waitDurationInOpenState: 30s
+  retry:
+    instances:
+      sendGridRetry:
+        maxAttempts: 3
+        waitDuration: 2s
+        exponentialBackoffMultiplier: 2
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+logging:
+  level:
+    root: INFO
