@@ -40,7 +40,7 @@ import { RabbitmqModule } from './rabbitmq/rabbitmq.module';
       inject: [ConfigService],
       useFactory: async (config: ConfigService) => {
         return {
-          stores: [new KeyvRedis('redis://localhost:6379')],
+          stores: [new KeyvRedis(config.get<string>('REDIS_URL'))],
         };
       },
     }),
