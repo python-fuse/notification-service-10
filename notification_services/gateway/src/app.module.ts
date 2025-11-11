@@ -1,7 +1,6 @@
 import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { NotificationsService } from './notifications/notifications.service';
 import { NotificationsModule } from './notifications/notifications.module';
 
 // env configuration
@@ -13,7 +12,7 @@ import { NotificationRequest } from './entities/notification-request.entity';
 
 // redis
 import { CacheModule } from '@nestjs/cache-manager';
-import { redisStore } from 'cache-manager-redis-store';
+import KeyvRedis from '@keyv/redis';
 import { RedisModule } from './redis/redis.module';
 import { RabbitmqModule } from './rabbitmq/rabbitmq.module';
 
@@ -39,12 +38,11 @@ import { RabbitmqModule } from './rabbitmq/rabbitmq.module';
       isGlobal: true,
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: (config: ConfigService) => ({
-        store: redisStore,
-        url: config.get<string>('REDIS_URL'),
-        ttl: config.get<number>('REDIS_TTL'),
-        logging: config.get('NODE_ENV') !== 'production',
-      }),
+      useFactory: async (config: ConfigService) => {
+        return {
+          stores: [new KeyvRedis('redis://localhost:6379')],
+        };
+      },
     }),
 
     NotificationsModule,
@@ -54,6 +52,6 @@ import { RabbitmqModule } from './rabbitmq/rabbitmq.module';
     RabbitmqModule,
   ],
   controllers: [AppController],
-  providers: [AppService, NotificationsService],
+  providers: [AppService],
 })
 export class AppModule {}

@@ -29,7 +29,6 @@ export class NotificationsController {
   constructor(private readonly notificationsService: NotificationsService) {} //     {
 
   @Post('send')
-  @UseGuards(RateLimitGuard)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Send notification',
@@ -47,9 +46,11 @@ export class NotificationsController {
     status: 429,
     description: 'Rate limit exceeded',
   })
-  initiateNotification(@Body() notificationDto: NotificationDto) {
-    const response =
-      this.notificationsService.initiateNotification(notificationDto);
+  @UseGuards(RateLimitGuard)
+  async initiateNotification(@Body() notificationDto: NotificationDto) {
+    return await this.notificationsService.initiateNotification(
+      notificationDto,
+    );
   }
 
   @Get('status')

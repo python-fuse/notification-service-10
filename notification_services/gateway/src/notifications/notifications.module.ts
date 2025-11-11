@@ -11,6 +11,7 @@ import { NotificationRequest } from 'src/entities/notification-request.entity';
 import { RedisModule } from 'src/redis/redis.module';
 import { RabbitmqModule } from 'src/rabbitmq/rabbitmq.module';
 import { IdempotencyMiddleware } from 'src/middleware/idempotency.middleware';
+import { NotificationsRepository } from './notifications.repository';
 
 @Module({
   imports: [
@@ -18,7 +19,7 @@ import { IdempotencyMiddleware } from 'src/middleware/idempotency.middleware';
     RedisModule,
     RabbitmqModule,
   ],
-  providers: [NotificationsService],
+  providers: [NotificationsService, NotificationsRepository],
   controllers: [NotificationsController],
 })
 export class NotificationsModule implements NestModule {

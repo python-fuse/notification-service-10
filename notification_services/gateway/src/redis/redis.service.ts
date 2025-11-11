@@ -43,11 +43,11 @@ export class RedisService {
 
   //   status caching
   async cacheStatus(requestId: string, status: any, ttl = 3600): Promise<void> {
-    await this.cacheManager.set(`status${requestId}`, status, ttl);
+    await this.cacheManager.set(`status:${requestId}`, status, ttl);
   }
 
   async getCachedStatus(requestId: string): Promise<any> {
-    return await this.cacheManager.get(`status${requestId}`);
+    return await this.cacheManager.get(`status:${requestId}`);
   }
 
   //   user data caching

@@ -8,8 +8,8 @@ export interface NotificationMessage {
   email?: string;
   push_token?: string;
   channel: 'email' | 'push';
-  subject?: string;
-  body: string;
+  // subject?: string;
+  // body: string;
   data?: Record<string, any>;
   timestamp: string;
   correlationId?: string;

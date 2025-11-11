@@ -16,11 +16,10 @@ export class RateLimitGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
 
-    const userId = request.body.user_id;
-
-    if (!userId) {
+    if (!request.body.user_id) {
       return true;
     }
+    const userId = request.body.user_id;
 
     const currentHour = new Date().toISOString().slice(0, 13);
     const requestCount = await this.redisService.incrementRateLimit(
