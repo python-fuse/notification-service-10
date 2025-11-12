@@ -9,6 +9,10 @@ RUN python3 -m venv $VIRTUAL_ENV
 # activate virtual environment
 ENV PATH=$VIRTUAL_ENV/bin:$PATH
 
+# set flag for docker environment
+ENV RUNNING_IN_DOCKER=true
+
+
 RUN apt-get update && apt-get install -y \
     build-essential \
     libpq-dev \
