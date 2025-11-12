@@ -23,7 +23,7 @@ FROM eclipse-temurin:21-jre
 WORKDIR /app
 
 # Copy only the built jar from the build stage
-COPY --from=build /app/target/email_service-0.0.1-SNAPSHOT.jar app.jar
+COPY --from=build /app/target/EmailService-0.0.1-SNAPSHOT.jar app.jar
 
 # Expose the application port
 EXPOSE 8080
