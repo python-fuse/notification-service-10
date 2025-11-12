@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { NotificationsModule } from './notifications/notifications.module';
+import { HealthModule } from './health/health.module';
 
 // env configuration
 import { ConfigModule, ConfigService } from '@nestjs/config';
@@ -46,6 +47,8 @@ import { RabbitmqModule } from './rabbitmq/rabbitmq.module';
     }),
 
     NotificationsModule,
+
+    HealthModule,
 
     RedisModule,
 

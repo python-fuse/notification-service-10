@@ -63,6 +63,16 @@ export class RabbitMQService implements OnModuleInit {
     }
   }
 
+  // Health check
+  isConnected(): boolean {
+    try {
+      // Check if client exists and is connected
+      return !!this.client;
+    } catch (error) {
+      return false;
+    }
+  }
+
   // // listen to status updates
   // listenToStatusQueue(callback:(data:any)=>void) {
   //   const queue = this.config.get<string>('RABBITMQ_QUEUE_STATUS');

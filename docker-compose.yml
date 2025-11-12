@@ -113,30 +113,30 @@ services:
     depends_on:
       - postgres_user
 
-  # template_service:
-  #   build:
-  #     context: ./notification_services/templates
-  #   container_name: template_service
-  #   env_file:
-  #     - .env
-  #   ports:
-  #     - "5000:5000"
-  #   depends_on:
-  #     - postgres_template
-
-
-
-  worker:
+  template_service:
     build:
-      context: ./notification_services/worker-spring
-    container_name: worker
+      context: ./notification_services/templates
+    container_name: template_service
     env_file:
       - .env
     ports:
-      - "8080:8080"
+      - "5000:5000"
     depends_on:
-      - rabbitmq
-      - postgres_status
+      - postgres_template
+
+
+
+  # worker:
+  #   build:
+  #     context: ./notification_services/worker-spring
+  #   container_name: worker
+  #   env_file:
+  #     - .env
+  #   ports:
+  #     - "8080:8080"
+  #   depends_on:
+  #     - rabbitmq
+  #     - postgres_status
 
 volumes:
   pg_gateway_data:
