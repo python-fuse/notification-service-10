@@ -194,6 +194,47 @@
           }
         }
       }
+    },
+    "/templates/{template_code}/{version_number}": {
+      "get": {
+        "tags": [
+          "Templates"
+        ],
+        "summary": "Get a specific version of a template",
+        "parameters": [
+          {
+            "name": "template_code",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "version_number",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Template version retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TemplateVersionResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Template or version not found"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -329,6 +370,61 @@
           "message": {
             "type": "string",
             "example": "Template retrieved successfully"
+          }
+        }
+      },
+      "TemplateVersionResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "language": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              },
+              "is_active": {
+                "type": "boolean"
+              },
+              "version": {
+                "type": "object",
+                "properties": {
+                  "version_number": {
+                    "type": "integer"
+                  },
+                  "subject": {
+                    "type": "string"
+                  },
+                  "body": {
+                    "type": "string"
+                  },
+                  "created_at": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "updated_at": {
+                    "type": "string",
+                    "format": "date-time"
+                  }
+                }
+              }
+            }
+          },
+          "message": {
+            "type": "string",
+            "example": "Template version retrieved successfully"
           }
         }
       },

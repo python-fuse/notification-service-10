@@ -92,6 +92,38 @@ def get_template(code):
     }), 200
 
 
+# ✅ Get specific version of a template
+@template_bp.route('/<string:code>/<int:version_number>', methods=['GET'])
+def get_template_version(code, version_number):
+    template = Template.query.filter_by(code=code).first()
+    if not template:
+        return jsonify({"success": False, "error": "Template not found"}), 404
+
+    version = TemplateVersion.query.filter_by(template_id=template.id, version_number=version_number).first()
+    if not version:
+        return jsonify({"success": False, "error": "Version not found"}), 404
+
+    return jsonify({
+        "success": True,
+        "data": {
+            "code": template.code,
+            "name": template.name,
+            "language": template.language,
+            "description": template.description,
+            "is_active": template.is_active,
+            "version": {
+                "version_number": version.version_number,
+                "subject": version.subject,
+                "body": version.body,
+                "created_at": version.created_at,
+                "updated_at": version.updated_at
+            }
+        },
+        "message": "Template version fetched successfully"
+    }), 200
+
+
+
 # ✅ Update (create new version)
 @template_bp.route('/<string:code>', methods=['PUT'])
 def update_template(code):
