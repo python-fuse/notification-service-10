@@ -67,6 +67,11 @@ services:
       - "5435:5432"
     volumes:
       - pg_template_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${TEMPLATE_DB_USER}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   postgres_status:
     image: postgres:15
@@ -102,6 +107,7 @@ services:
     container_name: user_service
     env_file:
       - .env
+      - .env.docker
     ports:
       - "3001:3001"
     depends_on:
@@ -118,17 +124,19 @@ services:
   #   depends_on:
   #     - postgres_template
 
-  # worker:
-  #   build:
-  #     context: ./notification_services/worker-spring
-  #   container_name: worker
-  #   env_file:
-  #     - .env
-  #   ports:
-  #     - "8080:8080"
-  #   depends_on:
-  #     - rabbitmq
-  #     - postgres_status
+
+
+  worker:
+    build:
+      context: ./notification_services/worker-spring
+    container_name: worker
+    env_file:
+      - .env
+    ports:
+      - "8080:8080"
+    depends_on:
+      - rabbitmq
+      - postgres_status
 
 volumes:
   pg_gateway_data:
