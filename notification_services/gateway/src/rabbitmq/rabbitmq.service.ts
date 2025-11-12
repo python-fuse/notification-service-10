@@ -1,6 +1,8 @@
 import { Inject, Injectable, OnModuleInit, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ClientProxy } from '@nestjs/microservices';
+import * as amqp from 'amqp-connection-manager';
+import { ChannelWrapper } from 'amqp-connection-manager';
 
 export interface NotificationMessage {
   request_id: string;
@@ -23,6 +25,8 @@ export interface NotificationMessage {
 @Injectable()
 export class RabbitMQService implements OnModuleInit {
   private readonly logger = new Logger(RabbitMQService.name);
+  private connection: amqp.AmqpConnectionManager;
+  private channelWrapper: ChannelWrapper;
 
   constructor(
     @Inject('RABBITMQ_SERVICE') private client: ClientProxy,
@@ -31,20 +35,37 @@ export class RabbitMQService implements OnModuleInit {
 
   async onModuleInit() {
     try {
-      await this.client.connect();
+      // Create direct connection for publishing to specific queues
+      const rabbitUrl = this.config.get<string>('RABBITMQ_URL');
+      this.connection = amqp.connect([rabbitUrl]);
+
+      this.channelWrapper = this.connection.createChannel({
+        json: true,
+        setup: async (channel: any) => {
+          // Ensure queues exist
+          await channel.assertQueue(
+            this.config.get<string>('RABBITMQ_QUEUE_EMAIL'),
+            { durable: true },
+          );
+          await channel.assertQueue(
+            this.config.get<string>('RABBITMQ_QUEUE_PUSH'),
+            { durable: true },
+          );
+        },
+      });
+
       this.logger.log('Successfully connected to RabbitMQ');
     } catch (error) {
       this.logger.error('Failed to connect to RabbitMQ', error);
-      // Don't throw - allow the app to start even if RabbitMQ is not available
-      // The connection will be attempted again when sending messages
     }
   }
 
   // Send message to email queue
   async publishToEmailQueue(message: NotificationMessage): Promise<void> {
     try {
-      const queue = this.config.get<string>('RABBITMQ_QUEUE_EMAIL');
-      this.client.emit(queue, message);
+      const queue =
+        this.config.get<string>('RABBITMQ_QUEUE_EMAIL') || 'email.queue';
+      await this.channelWrapper.sendToQueue(queue, message);
       this.logger.log(
         `Published message to email queue: ${message.request_id}`,
       );
@@ -57,8 +78,9 @@ export class RabbitMQService implements OnModuleInit {
   // Send message to push notification queue
   async publishToPushQueue(message: NotificationMessage): Promise<void> {
     try {
-      const queue = this.config.get<string>('RABBITMQ_QUEUE_PUSH');
-      this.client.emit(queue, message);
+      const queue =
+        this.config.get<string>('RABBITMQ_QUEUE_PUSH') || 'push.queue';
+      await this.channelWrapper.sendToQueue(queue, message);
       this.logger.log(`Published message to push queue: ${message.request_id}`);
     } catch (error) {
       this.logger.error('Failed to publish to push queue', error);
@@ -69,16 +91,14 @@ export class RabbitMQService implements OnModuleInit {
   // Health check
   isConnected(): boolean {
     try {
-      // Check if client exists and is connected
-      return !!this.client;
+      return this.connection && this.connection.isConnected();
     } catch (error) {
       return false;
     }
   }
 
-  // // listen to status updates
-  // listenToStatusQueue(callback:(data:any)=>void) {
-  //   const queue = this.config.get<string>('RABBITMQ_QUEUE_STATUS');
-  //   return this.client.
-  // }
+  async onModuleDestroy() {
+    await this.channelWrapper?.close();
+    await this.connection?.close();
+  }
 }
