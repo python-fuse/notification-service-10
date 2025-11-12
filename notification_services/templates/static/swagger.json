@@ -235,8 +235,58 @@
           }
         }
       }
+    },
+  "/templates/render": {
+    "post": {
+      "tags": ["Templates"],
+      "summary": "Render a template with provided variables",
+      "description": "Render either a stored template (by code and version) or a raw template string using Jinja2 substitution.",
+      "requestBody": {
+        "required": true,
+        "content": {
+          "application/json": {
+            "schema": {
+              "oneOf": [
+                { "$ref": "#/components/schemas/TemplateRenderRequest" },
+                {
+                  "type": "object",
+                  "required": ["template_str", "variables"],
+                  "properties": {
+                    "template_str": {
+                      "type": "string",
+                      "example": "Hello {{ name }}, welcome to {{ platform }}!"
+                    },
+                    "variables": {
+                      "type": "object",
+                      "additionalProperties": true,
+                      "example": {
+                        "name": "Ada Lovelace",
+                        "platform": "Framez"
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        }
+      },
+      "responses": {
+        "200": {
+          "description": "Template rendered successfully",
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/TemplateRenderResponse" }
+            }
+          }
+        },
+        "400": { "description": "Invalid input or missing template" },
+        "404": { "description": "Template not found" },
+        "500": { "description": "Internal server error" }
+      }
     }
-  },
+  }
+},
   "components": {
     "schemas": {
       "TemplateBase": {
