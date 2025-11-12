@@ -10,7 +10,7 @@ import {
 } from 'src/rabbitmq/rabbitmq.service';
 import {
   ExternalUserService,
-  MockTemplateService,
+  ExternalTemplateService,
 } from './external/external-services';
 import { Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
@@ -18,7 +18,7 @@ import { ConfigService } from '@nestjs/config';
 @Injectable()
 export class NotificationsService {
   private userService = new ExternalUserService(new ConfigService());
-  private mockTemplateService = new MockTemplateService();
+  private templateService = new ExternalTemplateService(new ConfigService());
 
   constructor(
     @InjectRepository(NotificationRequest)
@@ -66,21 +66,11 @@ export class NotificationsService {
       console.log('User Data:', userData);
 
       // grab template
-      const template = await this.mockTemplateService.getTemplate(
+      const template = await this.templateService.getTemplate(
         dto.template_code,
       );
-      if (!template.success) {
-        throw new HttpException(
-          {
-            success: false,
-            message: 'Template not found',
-            error: 'INVALIDE_TEMPLATE_CODE',
-            data: null,
-            meta: null,
-          },
-          HttpStatus.NOT_FOUND,
-        );
-      }
+
+      console.log('Template Data:', template);
 
       // save to db and redis
       const notification = await this.repo.save({
@@ -99,13 +89,18 @@ export class NotificationsService {
         channel: dto.channel as 'email' | 'push',
         request_id: requestId,
         user_id: dto.user_id,
-        template_code: dto.template_code,
+        template_code: template.code,
         timestamp: new Date().toISOString(),
         data: dto.data,
         correlation_id: requestId,
         attempts: 0,
         email: userData.email,
         push_token: userData.push_token,
+        body: template.latest_version.body,
+        language: template.language,
+        body_html: template.latest_version.body_html,
+        subject: template.latest_version.subject,
+        placeholders: template.latest_version.placeholders,
       };
 
       // add to proper queue
@@ -130,8 +125,7 @@ export class NotificationsService {
             push_token: userData.push_token,
           },
           template: {
-            subject: template.data.subject,
-            template_body: template.data.template_body,
+            ...template.latest_version,
           },
         },
       };

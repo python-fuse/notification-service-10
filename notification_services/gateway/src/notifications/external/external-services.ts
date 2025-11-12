@@ -2,6 +2,7 @@ import { IUserDto } from 'src/dto/user.dto';
 import axios from 'axios';
 import { ConfigService } from '@nestjs/config';
 import { HttpException, HttpStatus } from '@nestjs/common';
+import { ITemplateDto } from 'src/dto/template.dto';
 
 export class ExternalUserService {
   private USER_BASE_URL: string;
@@ -16,7 +17,8 @@ export class ExternalUserService {
     try {
       const userResponse: IUserDto = (
         await axios.get(this.USER_BASE_URL + `/${userId}`)
-      ).data;
+      ).data.data;
+      console.log('Fetched User:', userResponse);
       return userResponse;
     } catch (e) {
       throw new HttpException(
@@ -33,21 +35,32 @@ export class ExternalUserService {
   }
 }
 
-export class MockTemplateService {
+export class ExternalTemplateService {
+  private TEMPLATE_BASE_URL: string;
+  constructor(private readonly config: ConfigService) {
+    this.TEMPLATE_BASE_URL =
+      this.config.get<string>('NODE_ENV') === 'production'
+        ? 'http://template_service:5000/api/v1/templates'
+        : 'http://localhost:5000/api/v1/templates';
+  }
   async getTemplate(templateCode: string) {
-    // Return mock data for testing
-    return {
-      success: true,
-      message: 'template retrieved',
-      data: {
-        template_code: templateCode,
-        subject: 'Test Subject',
-        template_body: 'Hello {{name}}, this is a test: {{message}}',
-        variables: ['name', 'message'],
-        version: 1,
-      },
-      error: null,
-      meta: null,
-    };
+    try {
+      const templateResponse: ITemplateDto = (
+        await axios.get(this.TEMPLATE_BASE_URL + `/${templateCode}`)
+      ).data.data;
+
+      return templateResponse;
+    } catch (e) {
+      throw new HttpException(
+        {
+          success: false,
+          message: 'Template not found',
+          error: 'INVALIDE_TEMPLATE_CODE',
+          data: null,
+          meta: null,
+        },
+        HttpStatus.NOT_FOUND,
+      );
+    }
   }
 }

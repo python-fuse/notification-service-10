@@ -8,13 +8,16 @@ export interface NotificationMessage {
   email?: string;
   push_token?: string;
   channel: 'email' | 'push';
-  // subject?: string;
-  // body: string;
+  subject?: string;
+  body: string;
   data?: Record<string, any>;
   timestamp: string;
   correlation_id?: string;
   attempts?: number;
   template_code: string;
+  language?: string;
+  body_html?: string;
+  placeholders?: string[];
 }
 
 @Injectable()
