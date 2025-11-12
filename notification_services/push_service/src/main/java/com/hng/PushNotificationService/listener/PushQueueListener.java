@@ -4,12 +4,14 @@ import com.hng.PushNotificationService.dto.PushRequestDto;
 import com.hng.PushNotificationService.service.PushProcessingService;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
+import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
 import org.springframework.stereotype.Component;
 
 @Component
 public class PushQueueListener {
 
     private final PushProcessingService processingService;
+    private final Jackson2JsonMessageConverter converter = new Jackson2JsonMessageConverter();
 
     public PushQueueListener(PushProcessingService processingService) {
         this.processingService = processingService;

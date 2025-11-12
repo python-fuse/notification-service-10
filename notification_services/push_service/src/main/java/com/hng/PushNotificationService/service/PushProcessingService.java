@@ -1,7 +1,6 @@
 package com.hng.PushNotificationService.service;
 
 import com.hng.PushNotificationService.dto.PushRequestDto;
-import com.hng.PushNotificationService.dto.TemplateDto;
 import com.hng.PushNotificationService.util.TemplateRenderer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -13,7 +12,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.Duration;
 
-import static com.hng.PushNotificationService.config.RabbitConfig.EXCHANGE;
+import static com.hng.PushNotificationService.config.RabbitConfig.PUSH_EXCHANGE;
 import static com.hng.PushNotificationService.config.RabbitConfig.FAILED_ROUTING_KEY;
 
 @Service
@@ -21,21 +20,15 @@ public class PushProcessingService {
 
     private static final Logger log = LoggerFactory.getLogger(PushProcessingService.class);
 
-    private final TemplateClient templateClient;
-    private final NotificationStatusClient statusClient;
     private final OneSignalClient oneSignalClient;
     private final RabbitTemplate rabbitTemplate;
     private final StringRedisTemplate redisTemplate;
     private final String processedKeyPrefix;
 
-    public PushProcessingService(TemplateClient templateClient,
-                                 NotificationStatusClient statusClient,
-                                 OneSignalClient oneSignalClient,
+    public PushProcessingService(OneSignalClient oneSignalClient,
                                  RabbitTemplate rabbitTemplate,
                                  StringRedisTemplate redisTemplate,
                                  @Value("${redis.processed-key-prefix}") String processedKeyPrefix) {
-        this.templateClient = templateClient;
-        this.statusClient = statusClient;
         this.oneSignalClient = oneSignalClient;
         this.rabbitTemplate = rabbitTemplate;
         this.redisTemplate = redisTemplate;
@@ -54,18 +47,20 @@ public class PushProcessingService {
                 return;
             }
 
-            statusClient.updateStatus(requestId, "sending");
+//            statusClient.updateStatus(requestId, "sending");
 
             // fetch template
-            TemplateDto template = templateClient.fetchTemplate(request.template_code());
-            String title = template.subject(); // subject used as title
-            String body = TemplateRenderer.render(template.template_body(), request.data());
+//            TemplateDto template = templateClient.fetchTemplate(request.template_code());
+//            String title = template.subject(); // subject used as title
+//            String body = TemplateRenderer.render(template.template_body(), request.data());
+
+            String renderedBody = TemplateRenderer.render(request.body(), request.data());
+            String subject = request.subject();
 
             // validate push token
             if (!isValidToken(request.push_token())) {
                 log.warn("Invalid push token for request {}: {}", requestId, request.push_token());
-                statusClient.updateStatus(requestId, "failed");
-                rabbitTemplate.convertAndSend(EXCHANGE, FAILED_ROUTING_KEY, request);
+                rabbitTemplate.convertAndSend(PUSH_EXCHANGE, FAILED_ROUTING_KEY, request);
                 return;
             }
 
@@ -78,7 +73,7 @@ public class PushProcessingService {
                     Thread.sleep(backoffs[attempt]);
                 }
                 try {
-                    boolean ok = oneSignalClient.sendNotification(request.push_token(), title, body, request.data());
+                    boolean ok = oneSignalClient.sendNotification(request.push_token(), subject, renderedBody, request.data());
                     if (ok) {
                         sent = true;
                         break;
@@ -91,20 +86,36 @@ public class PushProcessingService {
             }
 
             if (sent) {
-                statusClient.updateStatus(requestId, "delivered");
+//                statusClient.updateStatus(requestId, "delivered");
                 // mark processed in Redis for idempotency; set TTL to e.g., 7 days
                 redisTemplate.opsForValue().set(redisKey, "1", Duration.ofDays(7));
                 log.info("Push delivered for request {}", requestId);
+                // Send to status.queue after success
+                rabbitTemplate.convertAndSend(
+                        "status.queue",
+                        new PushRequestDto(
+                                request.channel(),
+                                request.request_id(),
+                                request.user_id(),
+                                request.template_code(),
+                                request.subject(),
+                                request.body(),
+                                request.timestamp(),
+                                request.data(),
+                                request.correlation_id(),
+                                request.attempts(),
+                                request.email(),
+                                request.push_token()
+                        )
+                );
             } else {
-                statusClient.updateStatus(requestId, "failed");
-                rabbitTemplate.convertAndSend(EXCHANGE, FAILED_ROUTING_KEY, request);
+//                statusClient.updateStatus(requestId, "failed");
+                rabbitTemplate.convertAndSend(PUSH_EXCHANGE, FAILED_ROUTING_KEY, request);
                 log.error("Push failed for request {} and sent to dead-letter", requestId);
             }
 
         } catch (Exception e) {
             log.error("Unhandled exception processing push {}: {}", requestId, e.getMessage(), e);
-            try { statusClient.updateStatus(requestId, "failed"); } catch (Exception ex) { log.warn("Couldn't update status: {}", ex.getMessage()); }
-            rabbitTemplate.convertAndSend(EXCHANGE, FAILED_ROUTING_KEY, request);
         } finally {
             MDC.remove("correlation_id");
         }
