@@ -93,6 +93,8 @@ services:
       - rabbitmq
       - redis
       - postgres_gateway
+      - user_service
+
 
   user_service:
     build:
