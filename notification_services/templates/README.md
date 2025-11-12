@@ -61,7 +61,17 @@ This service is a Flask application responsible for managing templates. It provi
 
 ## API Documentation
 
-The API documentation is available at `http://localhost:5000/swagger-ui`.
+The API documentation is available at `http://localhost:5000/api/docs`.
+
+### Endpoints
+
+*   `POST /`: Create a new template.
+*   `GET /`: List all templates.
+*   `GET /<string:code>`: Get the latest version of a template.
+*   `GET /<string:code>/<int:version_number>`: Get a specific version of a template.
+*   `PUT /<string:code>`: Create a new version of a template.
+*   `DELETE /<string:code>`: Deactivate a template.
+
 
 ## Database Migrations
 
