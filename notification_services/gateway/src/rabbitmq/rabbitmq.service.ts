@@ -12,7 +12,7 @@ export interface NotificationMessage {
   // body: string;
   data?: Record<string, any>;
   timestamp: string;
-  correlationId?: string;
+  correlation_id?: string;
   attempts?: number;
   template_code: string;
 }

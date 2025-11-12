@@ -9,6 +9,7 @@ import {
   UseGuards,
   Headers,
   HttpException,
+  Param,
 } from '@nestjs/common';
 import {
   NotificationDto,
@@ -74,7 +75,7 @@ export class NotificationsController {
     );
   }
 
-  @Get('status')
+  @Get('status/:request_id')
   @ApiOperation({
     summary: 'Get notification status',
     description: 'Retrieve the delivery status of a notification',
@@ -94,7 +95,7 @@ export class NotificationsController {
     status: 404,
     description: 'Request ID not found',
   })
-  async getStatus(@Query('request_id') requestId: string) {
+  async getStatus(@Param('request_id') requestId: string) {
     return await this.notificationsService.getStatus(requestId);
   }
 }

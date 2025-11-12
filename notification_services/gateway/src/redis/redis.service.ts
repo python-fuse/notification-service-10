@@ -1,6 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import type { Cache } from 'cache-manager';
+import { ms } from './lib/utils';
 
 @Injectable()
 export class RedisService {
@@ -27,7 +28,7 @@ export class RedisService {
     const newValue = current + 1;
 
     if (current === 0) {
-      await this.cacheManager.set(key, newValue, 3600);
+      await this.cacheManager.set(key, newValue, ms(1, 'h'));
     } else {
       await this.cacheManager.set(key, newValue);
     }
@@ -42,8 +43,17 @@ export class RedisService {
   }
 
   //   status caching
-  async cacheStatus(requestId: string, status: any, ttl = 3600): Promise<void> {
-    await this.cacheManager.set(`status:${requestId}`, status, ttl);
+  async cacheStatus(
+    requestId: string,
+    status: any,
+    ttl = 86400,
+  ): Promise<void> {
+    try {
+      await this.cacheManager.set(`status:${requestId}`, status, ms(1, 'h'));
+      console.log('Status cached successfully');
+    } catch (error) {
+      console.error('Error caching status:', error);
+    }
   }
 
   async getCachedStatus(requestId: string): Promise<any> {
@@ -51,8 +61,8 @@ export class RedisService {
   }
 
   //   user data caching
-  async cacheUser(userId: string, data: any, ttl = 300): Promise<void> {
-    await this.cacheManager.set(`user:${userId}`, data, ttl);
+  async cacheUser(userId: string, data: any, ttl = 86400): Promise<void> {
+    await this.cacheManager.set(`user:${userId}`, data, ms(1, 'd'));
   }
 
   async getCachedUser(userId: string): Promise<any> {
@@ -63,9 +73,9 @@ export class RedisService {
   async cacheTemplate(
     templateCode: string,
     data: any,
-    ttl = 600,
+    ttl = 86400,
   ): Promise<void> {
-    await this.cacheManager.set(`template:${templateCode}`, data, ttl);
+    await this.cacheManager.set(`template:${templateCode}`, data, ms(3, 'd'));
   }
 
   async getCachedTemplate(templateCode: string): Promise<any> {

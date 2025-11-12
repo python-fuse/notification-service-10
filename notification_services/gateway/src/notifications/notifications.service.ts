@@ -8,12 +8,16 @@ import {
   NotificationMessage,
   RabbitMQService,
 } from 'src/rabbitmq/rabbitmq.service';
-import { MockUserService, MockTemplateService } from './mocks/mock-services';
+import {
+  ExternalUserService,
+  MockTemplateService,
+} from './external/external-services';
 import { Repository } from 'typeorm';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class NotificationsService {
-  private mockUserService = new MockUserService();
+  private userService = new ExternalUserService(new ConfigService());
   private mockTemplateService = new MockTemplateService();
 
   constructor(
@@ -25,25 +29,41 @@ export class NotificationsService {
 
   async initiateNotification(dto: NotificationDto, requestId: string) {
     try {
-      // CHeck idempotency
+      // Step 1: Check Redis cache (fast path)
       const cached = await this.redisService.getIdempotencyResponse(requestId);
-
       if (cached) return cached;
 
-      // grab user
-      const userData = await this.mockUserService.getUserById(dto.user_id);
-      if (!userData.success) {
-        throw new HttpException(
-          {
-            success: false,
-            message: 'User not found',
-            error: 'INVALIDE_USER_ID',
-            data: null,
-            meta: null,
+      // Step 2: Check if request_id already exists in database (cache miss/expired)
+      const existingNotification = await this.repo.findOne({
+        where: { request_id: requestId },
+      });
+
+      if (existingNotification) {
+        // Request was already processed but cache expired
+        // Reconstruct response from database
+        const response: NotificationResponseDto = {
+          success: true,
+          message: 'Notification already processed',
+          error: null,
+          data: {
+            status: existingNotification.status,
+            request_id: requestId,
           },
-          HttpStatus.NOT_FOUND,
-        );
+          meta: {
+            note: 'This request was already processed. Returning existing result.',
+          },
+        };
+
+        // Re-cache the response
+        await this.redisService.setIdempotencyResponse(requestId, response);
+
+        return response;
       }
+
+      // Step 3: New request - proceed with processing
+      // grab user
+      const userData = await this.userService.getUserById(dto.user_id);
+      console.log('User Data:', userData);
 
       // grab template
       const template = await this.mockTemplateService.getTemplate(
@@ -72,7 +92,7 @@ export class NotificationsService {
         user_id: dto.user_id,
       });
 
-      await this.redisService.cacheStatus(requestId, 'queued');
+      await this.redisService.cacheStatus(requestId, notification);
 
       // crate a mq message
       const notificationQueueItem: NotificationMessage = {
@@ -82,10 +102,10 @@ export class NotificationsService {
         template_code: dto.template_code,
         timestamp: new Date().toISOString(),
         data: dto.data,
-        correlationId: requestId,
+        correlation_id: requestId,
         attempts: 0,
-        email: userData.data.email,
-        push_token: userData.data.push_token,
+        email: userData.email,
+        push_token: userData.push_token,
       };
 
       // add to proper queue
@@ -104,7 +124,16 @@ export class NotificationsService {
           status: 'queued',
           request_id: requestId,
         },
-        meta: {},
+        meta: {
+          user_contact: {
+            email: userData.email,
+            push_token: userData.push_token,
+          },
+          template: {
+            subject: template.data.subject,
+            template_body: template.data.template_body,
+          },
+        },
       };
 
       // store idempotency in redis
@@ -137,9 +166,14 @@ export class NotificationsService {
       error: null,
       data: {
         request_id: requestId,
-        status: cached,
+        status: cached.status,
+        user_id: cached.user_id,
+        channel: cached.channel,
       },
-      meta: {},
+      meta: {
+        requested_at: cached.created_at,
+        last_updated: cached.updated_at,
+      },
     };
   }
 }
