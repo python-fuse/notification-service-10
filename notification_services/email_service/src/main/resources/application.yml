@@ -2,20 +2,25 @@ spring:
    application:
      name: email_service
    redis:
-     host: localhost
-     port: 6379
+     host: ${REDIS_HOST:redis}
+     port: ${REDIS_PORT:6379}
      timeout: 6000
      database: 0
+   rabbitmq:
+     host: ${RABBITMQ_HOST:rabbitmq}
+     port: ${RABBITMQ_PORT:5672}
+     username: ${RABBITMQ_USER:guest}
+     password: ${RABBITMQ_PASS:guest}
 
 rabbitmq:
-   host: localhost
-   port: 5672
-   username: guest
-   password: guest
+   host: ${RABBITMQ_HOST:rabbitmq}
+   port: ${RABBITMQ_PORT:5672}
+   username: ${RABBITMQ_USER:guest}
+   password: ${RABBITMQ_PASS:guest}
    queue:
-     email: email.queue
+     email: ${RABBITMQ_QUEUE_EMAIL:email.queue}
      failed: failed.queue
-     exchange: email.exchange
+     exchange: ${RABBITMQ_EXCHANGE:notifications.direct}
      routing-key: email.routing.key
      failed-routing-key: failed.routing.key
 

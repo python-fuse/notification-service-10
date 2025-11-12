@@ -124,7 +124,7 @@ services:
     depends_on:
       - postgres_template
 
-  email_worker:
+  email_service:
     build:
       context: ./notification_services/email_service
     container_name: email_service
@@ -135,18 +135,21 @@ services:
     depends_on:
       - rabbitmq
       - redis
+    environment:
+      - SENDGRID_API_KEY=${SENDGRID_API_KEY}
+      - SENDGRID_EMAIL=${SENDGRID_EMAIL}
 
-  push_worker:
-    build:
-      context: ./notification_services/push_service
-    container_name: push_service
-    env_file:
-      - .env
-    ports:
-      - "9090:9090"
-    depends_on:
-      - rabbitmq
-      - redis
+  # worker:
+  #   build:
+  #     context: ./notification_services/worker-spring
+  #   container_name: worker
+  #   env_file:
+  #     - .env
+  #   ports:
+  #     - "8080:8080"
+  #   depends_on:
+  #     - rabbitmq
+  #     - postgres_status
 
 volumes:
   pg_gateway_data:
