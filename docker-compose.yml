@@ -50,6 +50,11 @@ services:
       - "5434:5432"
     volumes:
       - pg_user_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${USER_DB_USER} -d ${USER_DB_NAME}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   postgres_template:
     image: postgres:15
@@ -83,7 +88,7 @@ services:
   # Optional: example service stubs to run in Docker
   gateway:
     build:
-      context: ./notification_services/gateway-nest
+      context: ./notification_services/gateway
     container_name: gateway
     env_file:
       - .env
@@ -93,29 +98,31 @@ services:
       - rabbitmq
       - redis
       - postgres_gateway
+      - user_service
+
 
   user_service:
     build:
-      context: ./notification_services/user-nest
+      context: ./notification_services/user
     container_name: user_service
-    env_file:
-      - .env
-    ports:
-      - "3001:3000"
-    depends_on:
-      - postgres_user
-
-  template_service:
-    build:
-      context: ./notification_services/templates
-    container_name: template_service
     env_file:
       - .env
       - .env.docker
     ports:
-      - "5000:5000"
+      - "3001:3001"
     depends_on:
-      - postgres_template
+      - postgres_user
+
+  # template_service:
+  #   build:
+  #     context: ./notification_services/templates
+  #   container_name: template_service
+  #   env_file:
+  #     - .env
+  #   ports:
+  #     - "5000:5000"
+  #   depends_on:
+  #     - postgres_template
 
 
 
