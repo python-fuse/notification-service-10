@@ -19,4 +19,4 @@ RUN ls -la dist
 
 EXPOSE 3001
 
-CMD ["npm","run", "start:prod"]
+CMD ["sh", "-c", "npx prisma migrate deploy && npm run start:prod"]
