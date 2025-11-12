@@ -6,6 +6,7 @@ from models import Template, TemplateVersion
 from config import Config
 from database import db
 from routes.templates import template_bp
+from utils.templater import render_template
 
 
 def create_app():
@@ -36,6 +37,22 @@ def create_app():
     @app.route('/health')
     def health_check():
         return jsonify({"status": "ok", "service": "template_service"}), 200
+    
+    # Test template endpoint
+    @app.route('/test-template')
+    def test_template():
+        template_body = "Hello {{ name }}, verify your account here: {{ link }}"
+        variables = {
+            "name": "John Doe",
+            "link": "https://example.com/verify"
+        }
+        rendered_template = render_template(template_body, variables)
+        return {
+            "success": True,
+            "rendered": rendered_template,
+            "message": "Template rendered successfully"
+        }
+
 
     # Root
     @app.route('/')
