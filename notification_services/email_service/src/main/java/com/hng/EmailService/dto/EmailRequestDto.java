@@ -3,9 +3,17 @@ package com.hng.EmailService.dto;
 import java.util.Map;
 
 public record EmailRequestDto(
+        String channel,
         String request_id,
         String user_id,
+        String template_code,
+        String subject,
+        String body,
+        String timestamp,
+        Map<String, Object> data,
+        String correlation_id,
+        int attempts,
         String email,
-        String template,
-        Map<String, Object> data
+        String push_token
 ) {}
+

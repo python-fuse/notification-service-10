@@ -2,12 +2,14 @@ package com.hng.EmailService.listener;
 
 import com.hng.EmailService.dto.EmailRequestDto;
 import com.hng.EmailService.service.EmailProcessingService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.stereotype.Component;
 
+@Slf4j
 @Component
 public class EmailQueueListener {
 
