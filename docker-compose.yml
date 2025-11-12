@@ -27,29 +27,29 @@ services:
       timeout: 5s
       retries: 5
 
-  postgres_gateway:
-    image: postgres:15
-    container_name: postgres_gateway
-    environment:
-      POSTGRES_USER: ${GATEWAY_DB_USER}
-      POSTGRES_PASSWORD: ${GATEWAY_DB_PASS}
-      POSTGRES_DB: ${GATEWAY_DB_NAME}
-    ports:
-      - "5433:5432"
-    volumes:
-      - pg_gateway_data:/var/lib/postgresql/data
+  # postgres_gateway:
+  #   image: postgres:15
+  #   container_name: postgres_gateway
+  #   environment:
+  #     POSTGRES_USER: ${GATEWAY_DB_USER}
+  #     POSTGRES_PASSWORD: ${GATEWAY_DB_PASS}
+  #     POSTGRES_DB: ${GATEWAY_DB_NAME}
+  #   ports:
+  #     - "5433:5432"
+  #   volumes:
+  #     - pg_gateway_data:/var/lib/postgresql/data
 
-  postgres_user:
-    image: postgres:15
-    container_name: postgres_user
-    environment:
-      POSTGRES_USER: ${USER_DB_USER}
-      POSTGRES_PASSWORD: ${USER_DB_PASS}
-      POSTGRES_DB: ${USER_DB_NAME}
-    ports:
-      - "5434:5432"
-    volumes:
-      - pg_user_data:/var/lib/postgresql/data
+  # postgres_user:
+  #   image: postgres:15
+  #   container_name: postgres_user
+  #   environment:
+  #     POSTGRES_USER: ${USER_DB_USER}
+  #     POSTGRES_PASSWORD: ${USER_DB_PASS}
+  #     POSTGRES_DB: ${USER_DB_NAME}
+  #   ports:
+  #     - "5434:5432"
+  #   volumes:
+  #     - pg_user_data:/var/lib/postgresql/data
 
   postgres_template:
     image: postgres:15
@@ -62,18 +62,23 @@ services:
       - "5435:5432"
     volumes:
       - pg_template_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${TEMPLATE_DB_USER}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
-  postgres_status:
-    image: postgres:15
-    container_name: postgres_status
-    environment:
-      POSTGRES_USER: ${STATUS_DB_USER}
-      POSTGRES_PASSWORD: ${STATUS_DB_PASS}
-      POSTGRES_DB: ${STATUS_DB_NAME}
-    ports:
-      - "5436:5432"
-    volumes:
-      - pg_status_data:/var/lib/postgresql/data
+  # postgres_status:
+  #   image: postgres:15
+  #   container_name: postgres_status
+  #   environment:
+  #     POSTGRES_USER: ${STATUS_DB_USER}
+  #     POSTGRES_PASSWORD: ${STATUS_DB_PASS}
+  #     POSTGRES_DB: ${STATUS_DB_NAME}
+  #   ports:
+  #     - "5436:5432"
+  #   volumes:
+  #     - pg_status_data:/var/lib/postgresql/data
 
   # # Optional: example service stubs to run in Docker
   # gateway:
@@ -106,10 +111,13 @@ services:
     container_name: template_service
     env_file:
       - .env
+      - .env.docker
     ports:
       - "5000:5000"
     depends_on:
       - postgres_template
+
+
 
   # worker:
   #   build:
