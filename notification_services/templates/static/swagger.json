@@ -285,6 +285,67 @@
         "500": { "description": "Internal server error" }
       }
     }
+  },
+  "/templates/{template_code}/rollback": {
+    "post": {
+      "tags": ["Templates"],
+      "summary": "Rollback a template to a previous version",
+      "description": "Creates a new version using the body and subject of a previous version.",
+      "parameters": [
+        {
+          "name": "template_code",
+          "in": "path",
+          "required": true,
+          "schema": { "type": "string" },
+          "description": "The unique code of the template"
+        }
+      ],
+      "requestBody": {
+        "required": true,
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "required": ["target_version"],
+              "properties": {
+                "target_version": {
+                  "type": "integer",
+                  "example": 2
+                }
+              }
+            }
+          }
+        }
+      },
+      "responses": {
+        "200": {
+          "description": "Template rolled back successfully",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "success": { "type": "boolean", "example": true },
+                  "data": {
+                    "type": "object",
+                    "properties": {
+                      "code": { "type": "string", "example": "welcome_email" },
+                      "previous_version": { "type": "integer", "example": 5 },
+                      "rolled_back_to": { "type": "integer", "example": 2 },
+                      "new_version": { "type": "integer", "example": 6 }
+                    }
+                  },
+                  "message": { "type": "string", "example": "Template rolled back successfully" }
+                }
+              }
+            }
+          }
+        },
+        "400": { "description": "Invalid input" },
+        "404": { "description": "Template or version not found" },
+        "500": { "description": "Internal server error" }
+      }
+    }
   }
 },
   "components": {

@@ -245,3 +245,63 @@ def render_template_endpoint():
             "error": "Internal server error",
             "details": str(e)
         }), 500
+    
+
+# Rollback a template to a previous version
+@template_bp.route('/<string:code>/rollback', methods=['POST'])
+def rollback_template_version(code):
+    """
+    Create a new version by rolling back to a previous version's content.
+    """
+    try:
+        data = request.get_json()
+        if not data or 'target_version' not in data:
+            return jsonify({"success": False, "error": "target_version is required"}), 400
+
+        target_version_number = data['target_version']
+
+        # 1. Fetch template
+        template = Template.query.filter_by(code=code).first()
+        if not template:
+            return jsonify({"success": False, "error": "Template not found"}), 404
+
+        # 2. Fetch target version
+        target_version = TemplateVersion.query.filter_by(
+            template_id=template.id,
+            version_number=target_version_number
+        ).first()
+        if not target_version:
+            return jsonify({
+                "success": False,
+                "error": f"Target version {target_version_number} not found"
+            }), 404
+
+        # 3. Determine next version number
+        latest_version = max(template.versions, key=lambda v: v.version_number, default=None)
+        new_version_number = (latest_version.version_number + 1) if latest_version else 1
+
+        # 4. Create new version copying content
+        new_version = TemplateVersion(
+            template_id=template.id,
+            version_number=new_version_number,
+            subject=target_version.subject,
+            body=target_version.body
+        )
+        db.session.add(new_version)
+        template.updated_at = datetime.utcnow()
+        db.session.commit()
+
+        return jsonify({
+            "success": True,
+            "message": f"Template rolled back to version {target_version_number} successfully",
+            "data": {
+                "code": template.code,
+                "previous_version": latest_version.version_number if latest_version else None,
+                "rolled_back_to": target_version_number,
+                "new_version": new_version_number
+            }
+        }), 200
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": "Internal server error", "details": str(e)}), 500
