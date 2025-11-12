@@ -27,29 +27,29 @@ services:
       timeout: 5s
       retries: 5
 
-  # postgres_gateway:
-  #   image: postgres:15
-  #   container_name: postgres_gateway
-  #   environment:
-  #     POSTGRES_USER: ${GATEWAY_DB_USER}
-  #     POSTGRES_PASSWORD: ${GATEWAY_DB_PASS}
-  #     POSTGRES_DB: ${GATEWAY_DB_NAME}
-  #   ports:
-  #     - "5433:5432"
-  #   volumes:
-  #     - pg_gateway_data:/var/lib/postgresql/data
+  postgres_gateway:
+    image: postgres:15
+    container_name: postgres_gateway
+    environment:
+      POSTGRES_USER: ${GATEWAY_DB_USER}
+      POSTGRES_PASSWORD: ${GATEWAY_DB_PASS}
+      POSTGRES_DB: ${GATEWAY_DB_NAME}
+    ports:
+      - "5433:5432"
+    volumes:
+      - pg_gateway_data:/var/lib/postgresql/data
 
-  # postgres_user:
-  #   image: postgres:15
-  #   container_name: postgres_user
-  #   environment:
-  #     POSTGRES_USER: ${USER_DB_USER}
-  #     POSTGRES_PASSWORD: ${USER_DB_PASS}
-  #     POSTGRES_DB: ${USER_DB_NAME}
-  #   ports:
-  #     - "5434:5432"
-  #   volumes:
-  #     - pg_user_data:/var/lib/postgresql/data
+  postgres_user:
+    image: postgres:15
+    container_name: postgres_user
+    environment:
+      POSTGRES_USER: ${USER_DB_USER}
+      POSTGRES_PASSWORD: ${USER_DB_PASS}
+      POSTGRES_DB: ${USER_DB_NAME}
+    ports:
+      - "5434:5432"
+    volumes:
+      - pg_user_data:/var/lib/postgresql/data
 
   postgres_template:
     image: postgres:15
@@ -68,42 +68,42 @@ services:
       timeout: 5s
       retries: 5
 
-  # postgres_status:
-  #   image: postgres:15
-  #   container_name: postgres_status
-  #   environment:
-  #     POSTGRES_USER: ${STATUS_DB_USER}
-  #     POSTGRES_PASSWORD: ${STATUS_DB_PASS}
-  #     POSTGRES_DB: ${STATUS_DB_NAME}
-  #   ports:
-  #     - "5436:5432"
-  #   volumes:
-  #     - pg_status_data:/var/lib/postgresql/data
+  postgres_status:
+    image: postgres:15
+    container_name: postgres_status
+    environment:
+      POSTGRES_USER: ${STATUS_DB_USER}
+      POSTGRES_PASSWORD: ${STATUS_DB_PASS}
+      POSTGRES_DB: ${STATUS_DB_NAME}
+    ports:
+      - "5436:5432"
+    volumes:
+      - pg_status_data:/var/lib/postgresql/data
 
-  # # Optional: example service stubs to run in Docker
-  # gateway:
-  #   build:
-  #     context: ./notification_services/gateway-nest
-  #   container_name: gateway
-  #   env_file:
-  #     - .env
-  #   ports:
-  #     - "3000:3000"
-  #   depends_on:
-  #     - rabbitmq
-  #     - redis
-  #     - postgres_gateway
+  # Optional: example service stubs to run in Docker
+  gateway:
+    build:
+      context: ./notification_services/gateway-nest
+    container_name: gateway
+    env_file:
+      - .env
+    ports:
+      - "3000:3000"
+    depends_on:
+      - rabbitmq
+      - redis
+      - postgres_gateway
 
-  # user_service:
-  #   build:
-  #     context: ./notification_services/user-nest
-  #   container_name: user_service
-  #   env_file:
-  #     - .env
-  #   ports:
-  #     - "3001:3000"
-  #   depends_on:
-  #     - postgres_user
+  user_service:
+    build:
+      context: ./notification_services/user-nest
+    container_name: user_service
+    env_file:
+      - .env
+    ports:
+      - "3001:3000"
+    depends_on:
+      - postgres_user
 
   template_service:
     build:
@@ -119,17 +119,17 @@ services:
 
 
 
-  # worker:
-  #   build:
-  #     context: ./notification_services/worker-spring
-  #   container_name: worker
-  #   env_file:
-  #     - .env
-  #   ports:
-  #     - "8080:8080"
-  #   depends_on:
-  #     - rabbitmq
-  #     - postgres_status
+  worker:
+    build:
+      context: ./notification_services/worker-spring
+    container_name: worker
+    env_file:
+      - .env
+    ports:
+      - "8080:8080"
+    depends_on:
+      - rabbitmq
+      - postgres_status
 
 volumes:
   pg_gateway_data:
