@@ -2,6 +2,7 @@
 from flask import Blueprint, request, jsonify
 from database import db
 from models import Template, TemplateVersion
+from utils.templater import render_template
 from datetime import datetime
 
 template_bp = Blueprint('template_bp', __name__)
@@ -92,6 +93,38 @@ def get_template(code):
     }), 200
 
 
+# ✅ Get specific version of a template
+@template_bp.route('/<string:code>/<int:version_number>', methods=['GET'])
+def get_template_version(code, version_number):
+    template = Template.query.filter_by(code=code).first()
+    if not template:
+        return jsonify({"success": False, "error": "Template not found"}), 404
+
+    version = TemplateVersion.query.filter_by(template_id=template.id, version_number=version_number).first()
+    if not version:
+        return jsonify({"success": False, "error": "Version not found"}), 404
+
+    return jsonify({
+        "success": True,
+        "data": {
+            "code": template.code,
+            "name": template.name,
+            "language": template.language,
+            "description": template.description,
+            "is_active": template.is_active,
+            "version": {
+                "version_number": version.version_number,
+                "subject": version.subject,
+                "body": version.body,
+                "created_at": version.created_at,
+                "updated_at": version.updated_at
+            }
+        },
+        "message": "Template version fetched successfully"
+    }), 200
+
+
+
 # ✅ Update (create new version)
 @template_bp.route('/<string:code>', methods=['PUT'])
 def update_template(code):
@@ -137,3 +170,138 @@ def delete_template(code):
         "success": True,
         "message": f"Template '{code}' deactivated successfully"
     }), 200
+
+# ✅ Render endpoint (ad-hoc or stored templates)
+@template_bp.route('/render', methods=['POST'])
+def render_template_endpoint():
+    """
+    Render a template either from a raw template string or from a stored template and version.
+    """
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"success": False, "error": "No data provided"}), 400
+
+        variables = data.get('variables', {})
+        template_str = data.get('template_str')
+        template_code = data.get('template_code')
+        version_number = data.get('version_number')
+
+        # Case 1: Inline template rendering
+        if template_str:
+            rendered = render_template(template_str, variables)
+            return jsonify({
+                "success": True,
+                "data": {
+                    "rendered": rendered,
+                    "source": "inline",
+                    "variables": variables
+                },
+                "message": "Inline template rendered successfully"
+            }), 200
+
+        # Case 2: Database template rendering
+        if template_code:
+            template = Template.query.filter_by(code=template_code, is_active=True).first()
+            if not template:
+                return jsonify({"success": False, "error": f"Template '{template_code}' not found"}), 404
+
+            # Fetch version (latest or specific)
+            if version_number:
+                version = TemplateVersion.query.filter_by(template_id=template.id, version_number=version_number).first()
+                if not version:
+                    return jsonify({"success": False, "error": f"Version {version_number} not found for template '{template_code}'"}), 404
+            else:
+                # Get latest version
+                version = max(template.versions, key=lambda v: v.version_number, default=None)
+                if not version:
+                    return jsonify({"success": False, "error": f"No versions found for template '{template_code}'"}), 404
+
+            # Render body using Jinja2
+            rendered = render_template(version.body, variables)
+
+            return jsonify({
+                "success": True,
+                "data": {
+                    "rendered": rendered,
+                    "template_code": template_code,
+                    "version_number": version.version_number,
+                    "variables": variables
+                },
+                "message": "Template rendered successfully from database"
+            }), 200
+
+        # Neither provided
+        return jsonify({
+            "success": False,
+            "error": "Either 'template_str' or 'template_code' must be provided"
+        }), 400
+
+    except ValueError as e:
+        return jsonify({"success": False, "error": str(e)}), 400
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": "Internal server error",
+            "details": str(e)
+        }), 500
+    
+
+# Rollback a template to a previous version
+@template_bp.route('/<string:code>/rollback', methods=['POST'])
+def rollback_template_version(code):
+    """
+    Create a new version by rolling back to a previous version's content.
+    """
+    try:
+        data = request.get_json()
+        if not data or 'target_version' not in data:
+            return jsonify({"success": False, "error": "target_version is required"}), 400
+
+        target_version_number = data['target_version']
+
+        # 1. Fetch template
+        template = Template.query.filter_by(code=code).first()
+        if not template:
+            return jsonify({"success": False, "error": "Template not found"}), 404
+
+        # 2. Fetch target version
+        target_version = TemplateVersion.query.filter_by(
+            template_id=template.id,
+            version_number=target_version_number
+        ).first()
+        if not target_version:
+            return jsonify({
+                "success": False,
+                "error": f"Target version {target_version_number} not found"
+            }), 404
+
+        # 3. Determine next version number
+        latest_version = max(template.versions, key=lambda v: v.version_number, default=None)
+        new_version_number = (latest_version.version_number + 1) if latest_version else 1
+
+        # 4. Create new version copying content
+        new_version = TemplateVersion(
+            template_id=template.id,
+            version_number=new_version_number,
+            subject=target_version.subject,
+            body=target_version.body
+        )
+        db.session.add(new_version)
+        template.updated_at = datetime.utcnow()
+        db.session.commit()
+
+        return jsonify({
+            "success": True,
+            "message": f"Template rolled back to version {target_version_number} successfully",
+            "data": {
+                "code": template.code,
+                "previous_version": latest_version.version_number if latest_version else None,
+                "rolled_back_to": target_version_number,
+                "new_version": new_version_number
+            }
+        }), 200
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": "Internal server error", "details": str(e)}), 500
