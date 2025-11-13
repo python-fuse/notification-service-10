@@ -18,23 +18,20 @@ public class EmailProcessingService {
 
     private static final Logger log = LoggerFactory.getLogger(EmailProcessingService.class);
 
-//    private final TemplateClient templateClient;
-//    private final NotificationStatusClient statusClient;
     private final SendGridClient sendGridClient;
     private final RabbitTemplate rabbitTemplate;
     private final RedisService redisService;
+    private final TemplateServiceClient templateServiceClient;
 
     public EmailProcessingService(
-//            TemplateClient templateClient,
-//                                  NotificationStatusClient statusClient,
                                   SendGridClient sendGridClient,
                                   RabbitTemplate rabbitTemplate,
-                                  RedisService redisService) {
-//        this.templateClient = templateClient;
-//        this.statusClient = statusClient;
+                                  RedisService redisService,
+                                  TemplateServiceClient templateServiceClient) {
         this.sendGridClient = sendGridClient;
         this.rabbitTemplate = rabbitTemplate;
         this.redisService = redisService;
+        this.templateServiceClient = templateServiceClient;
     }
 
     public void process(EmailRequestDto request, String correlationId) {
@@ -74,20 +71,25 @@ public class EmailProcessingService {
         }
 
         try {
-            // Update status to sending
-//            statusClient.updateStatus(request.request_id(), "sending");
+            // Update status to processing
+            redisService.updateStatus(request.request_id(), "processing");
+            log.info("Updated status to 'processing' for request {}", request.request_id());
 
-            // 1. fetch template
-            String renderedBody = TemplateRenderer.render(request.body(), request.data());
+            // 1. Render template using template service
+            String renderedBody;
             String subject = request.subject();
+            
+            try {
+                log.info("Rendering template {} with data: {}", request.template_code(), request.data());
+                renderedBody = templateServiceClient.renderInlineTemplate(request.body(), request.data());
+                log.info("Successfully rendered template for request {}", request.request_id());
+            } catch (Exception e) {
+                log.error("Failed to render template via template service, falling back to local renderer: {}", e.getMessage());
+                // Fallback to local rendering if template service is unavailable
+                renderedBody = TemplateRenderer.render(request.body(), request.data());
+            }
 
-//            TemplateDto template = templateClient.fetchTemplate(request.template());
-
-            // 2. render body
-//            String body = TemplateRenderer.render(template.template_body(), request.data());
-//            String subject = template.subject();
-
-            // 3. send with exponential backoff attempts: 1st: immediate; retries: 2s,4s,8s
+            // 2. Send with exponential backoff attempts: 1st: immediate; retries: 2s,4s,8s
             int[] backoffs = {0, 2000, 4000, 8000}; // ms
             boolean sent = false;
             for (int attempt = 0; attempt < backoffs.length; attempt++) {
@@ -109,7 +111,8 @@ public class EmailProcessingService {
             }
 
             if (sent) {
-//                statusClient.updateStatus(request.request_id(), "delivered");
+                // Update status to delivered in Redis
+                redisService.updateStatus(request.request_id(), "delivered");
                 log.info("Email delivered for request {}", request.request_id());
 
                 // Send to status.queue after success
@@ -131,13 +134,16 @@ public class EmailProcessingService {
                         )
                 );
             } else {
-//                statusClient.updateStatus(request.request_id(), "failed");
+                // Update status to failed in Redis
+                redisService.updateStatusWithError(request.request_id(), "failed", "Failed to deliver email after all retry attempts");
                 log.error("Failed to deliver email for request {}. Sending to dead-letter queue", request.request_id());
                 // push original message to failed.queue
                 rabbitTemplate.convertAndSend(EMAIL_EXCHANGE, FAILED_ROUTING_KEY, request);
                 throw new RuntimeException("Failed to deliver email after all retry attempts");
             }
         } catch (Exception e) {
+            // Update status to failed in Redis with error message
+            redisService.updateStatusWithError(request.request_id(), "failed", e.getMessage());
             log.error("Unhandled exception processing email {}: {}", request.request_id(), e.getMessage(), e);
             // Throw exception so message is not acknowledged and can be retried or sent to DLQ
             throw new RuntimeException("Failed to process email: " + e.getMessage(), e);
