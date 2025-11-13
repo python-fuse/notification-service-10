@@ -102,15 +102,15 @@ services:
 
 
   user_service:
-    command:
-      sh -c "npx prisma db push --force-reset --accept-data-loss && npx prisma generate && node dist/index.js"
-
     build:
       context: ./notification_services/user
     container_name: user_service
     env_file:
       - .env
       - .env.docker
+    environment:
+      # Explicitly set DATABASE_URL for user service
+      - DATABASE_URL=postgresql://${USER_DB_USER}:${USER_DB_PASS}@postgres_user:5432/${USER_DB_NAME}
     ports:
       - "3001:3001"
     depends_on:
@@ -122,11 +122,19 @@ services:
     container_name: template_service
     env_file:
       - .env
+    environment:
+      - RUNNING_IN_DOCKER=true
+      - TEMPLATE_DB_USER=${TEMPLATE_DB_USER}
+      - TEMPLATE_DB_PASS=${TEMPLATE_DB_PASS}
+      - TEMPLATE_DB_NAME=${TEMPLATE_DB_NAME}
+      - TEMPLATE_DB_HOST=postgres_template
+      - TEMPLATE_DB_PORT=5432
+      # Don't inherit DATABASE_URL from .env
+      - DATABASE_URL=postgresql://${TEMPLATE_DB_USER}:${TEMPLATE_DB_PASS}@postgres_template:5432/${TEMPLATE_DB_NAME}
     ports:
       - "5000:5000"
     depends_on:
       - postgres_template
-
   email_service:
     build:
       context: ./notification_services/email_service

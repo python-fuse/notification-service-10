@@ -7,10 +7,8 @@ import { ITemplateDto } from 'src/dto/template.dto';
 export class ExternalUserService {
   private USER_BASE_URL: string;
   constructor(private readonly config: ConfigService) {
-    this.USER_BASE_URL =
-      this.config.get<string>('NODE_ENV') === 'production'
-        ? 'http://user_service:3001/api/v1/users'
-        : 'http://localhost:3001/api/v1/users';
+    // Always use Docker service name when running in Docker
+    this.USER_BASE_URL = 'http://user_service:3001/api/v1/users';
   }
 
   async getUserById(userId: string): Promise<IUserDto> {
@@ -38,10 +36,8 @@ export class ExternalUserService {
 export class ExternalTemplateService {
   private TEMPLATE_BASE_URL: string;
   constructor(private readonly config: ConfigService) {
-    this.TEMPLATE_BASE_URL =
-      this.config.get<string>('NODE_ENV') === 'production'
-        ? 'http://template_service:5000/api/v1/templates'
-        : 'http://localhost:5000/api/v1/templates';
+    // Always use Docker service name when running in Docker
+    this.TEMPLATE_BASE_URL = 'http://template_service:5000/api/v1/templates';
   }
   async getTemplate(templateCode: string) {
     try {
