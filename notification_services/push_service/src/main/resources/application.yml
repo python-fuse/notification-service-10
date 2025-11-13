@@ -1,19 +1,29 @@
 spring:
   application:
     name: push_service
+  redis:
+    host: ${REDIS_HOST:redis}
+    port: ${REDIS_PORT:6379}
+    timeout: 6000
+    database: 0
+  rabbitmq:
+    host: ${RABBITMQ_HOST:rabbitmq}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER:guest}
+    password: ${RABBITMQ_PASS:guest}
 
 server:
   port: 9090
 
 rabbitmq:
-  host: localhost
-  port: 5672
-  username: guest
-  password: guest
+  host: ${RABBITMQ_HOST:rabbitmq}
+  port: ${RABBITMQ_PORT:5672}
+  username: ${RABBITMQ_USER:guest}
+  password: ${RABBITMQ_PASS:guest}
   queue:
-    push: push.queue
+    push: ${RABBITMQ_QUEUE_PUSH:push.queue}
     failed: failed.queue
-    exchange: push.exchange
+    exchange: ${RABBITMQ_EXCHANGE:notifications.direct}
     routing-key: push.routing.key
     failed-routing-key: failed.routing.key
 
@@ -22,18 +32,37 @@ onesignal:
   app-id: ${ONESIGNAL_APP_ID}
   url: https://onesignal.com/api/v1
 
+template-service:
+  base-url: ${TEMPLATE_SERVICE_URL:http://template_service:5000}
+  render-endpoint: /api/v1/templates/render
+
 resilience4j:
   circuitbreaker:
     instances:
       oneSignalCircuit:
+        registerHealthIndicator: true
+        slidingWindowType: COUNT_BASED
         slidingWindowSize: 10
         minimumNumberOfCalls: 2
         failureRateThreshold: 50
         waitDurationInOpenState: 30s
+  retry:
+    instances:
+      oneSignalRetry:
+        maxAttempts: 3
+        waitDuration: 2s
+        exponentialBackoffMultiplier: 2
 
 redis:
-   host: localhost
-   port: 6379
-   timeout: 6000
-   database: 0
-   processed-key-prefix: "push:processed:"
+  processed-key-prefix: "status:"
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+
+logging:
+  level:
+    root: INFO
+    com.hng.PushNotificationService: DEBUG

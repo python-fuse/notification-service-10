@@ -1,7 +1,7 @@
 # ============================
 # BUILD STAGE
 # ============================
-FROM maven:3.9.6-eclipse-temurin-21 AS build
+FROM maven:3.9.6-eclipse-temurin-21-alpine AS build
 
 # Set working directory inside the container
 WORKDIR /app
@@ -15,15 +15,15 @@ COPY src ./src
 RUN mvn clean package -DskipTests
 
 # ============================
-# RUNTIME STAGE
+# RUNTIME STAGE (Alpine-based JRE)
 # ============================
-FROM eclipse-temurin:21-jre
+FROM eclipse-temurin:21-jre-alpine
 
 # Set working directory
 WORKDIR /app
 
 # Copy only the built jar from the build stage
-COPY --from=build /app/target/push_service-0.0.1-SNAPSHOT.jar app.jar
+COPY --from=build /app/target/*.jar app.jar
 
 # Expose the application port
 EXPOSE 9090
