@@ -102,6 +102,9 @@ services:
 
 
   user_service:
+    command:
+      sh -c "npx prisma db push --force-reset --accept-data-loss && npx prisma generate && node dist/index.js"
+
     build:
       context: ./notification_services/user
     container_name: user_service
