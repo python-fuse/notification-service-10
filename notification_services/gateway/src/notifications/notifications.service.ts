@@ -31,7 +31,95 @@ export class NotificationsService {
     try {
       // Step 1: Check Redis cache (fast path)
       const cached = await this.redisService.getIdempotencyResponse(requestId);
-      if (cached) return cached;
+      if (cached) {
+        // Check if the cached response shows the notification is still queued
+        const statusData = await this.redisService.getCachedStatus(requestId);
+        
+        if (statusData && statusData.status === 'queued') {
+          // Still in queue, requeue it
+          console.log(`Request ${requestId} is still queued. Re-queueing...`);
+          
+          // Fetch user and template data again
+          const userData = await this.userService.getUserById(dto.user_id);
+          const template = await this.templateService.getTemplate(dto.template_code);
+          
+          // Create queue message
+          const notificationQueueItem: NotificationMessage = {
+            channel: dto.channel as 'email' | 'push',
+            request_id: requestId,
+            user_id: dto.user_id,
+            template_code: template.code,
+            timestamp: new Date().toISOString(),
+            data: dto.data,
+            correlation_id: requestId,
+            attempts: 0,
+            email: userData.email,
+            push_token: userData.push_token,
+            body: template.latest_version.body,
+            language: template.language,
+            body_html: template.latest_version.body_html,
+            subject: template.latest_version.subject,
+            placeholders: template.latest_version.placeholders,
+          };
+
+          // Re-queue the message
+          if (dto.channel === 'email') {
+            await this.rabbitMQService.publishToEmailQueue(notificationQueueItem);
+          } else {
+            await this.rabbitMQService.publishToPushQueue(notificationQueueItem);
+          }
+          
+          return {
+            success: true,
+            message: 'Notification re-queued successfully',
+            error: null,
+            data: {
+              status: 'queued',
+              request_id: requestId,
+            },
+            meta: {
+              note: 'Request was still in queue and has been re-queued for processing.',
+              user_contact: {
+                email: userData.email,
+                push_token: userData.push_token,
+              },
+            },
+          };
+        }
+        
+        // Build appropriate message based on status
+        let message = 'Notification already processed';
+        let note = 'This request was already processed. Returning existing result.';
+        
+        if (statusData) {
+          switch (statusData.status) {
+            case 'processing':
+              message = 'Notification is currently being processed';
+              note = 'This request is currently being processed. Please wait for completion.';
+              break;
+            case 'delivered':
+              message = 'Notification delivered successfully';
+              note = 'This notification was already delivered successfully.';
+              break;
+            case 'failed':
+              message = 'Notification delivery failed';
+              note = 'This notification failed to deliver. Check the error details for more information.';
+              break;
+          }
+        }
+        
+        // Update cached response with appropriate message
+        const updatedResponse = {
+          ...cached,
+          message,
+          meta: {
+            ...cached.meta,
+            note,
+          },
+        };
+        
+        return updatedResponse;
+      }
 
       // Step 2: Check if request_id already exists in database (cache miss/expired)
       const existingNotification = await this.repo.findOne({
@@ -40,17 +128,39 @@ export class NotificationsService {
 
       if (existingNotification) {
         // Request was already processed but cache expired
-        // Reconstruct response from database
+        // Reconstruct response from database with appropriate messaging
+        let message = 'Notification already processed';
+        let note = 'This request was already processed. Returning existing result.';
+        
+        switch (existingNotification.status) {
+          case 'queued':
+            message = 'Notification is queued';
+            note = 'This notification is queued for processing.';
+            break;
+          case 'processing':
+            message = 'Notification is currently being processed';
+            note = 'This request is currently being processed. Please wait for completion.';
+            break;
+          case 'delivered':
+            message = 'Notification delivered successfully';
+            note = 'This notification was already delivered successfully.';
+            break;
+          case 'failed':
+            message = 'Notification delivery failed';
+            note = 'This notification failed to deliver. Check the error details for more information.';
+            break;
+        }
+        
         const response: NotificationResponseDto = {
           success: true,
-          message: 'Notification already processed',
+          message,
           error: null,
           data: {
             status: existingNotification.status,
             request_id: requestId,
           },
           meta: {
-            note: 'This request was already processed. Returning existing result.',
+            note,
           },
         };
 
