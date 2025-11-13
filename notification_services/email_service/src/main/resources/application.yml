@@ -1,0 +1,59 @@
+spring:
+  application:
+    name: email_service
+  redis:
+    host: ${REDIS_HOST:redis}
+    port: ${REDIS_PORT:6379}
+    timeout: 6000
+    database: 0
+  rabbitmq:
+    host: ${RABBITMQ_HOST:rabbitmq}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER:guest}
+    password: ${RABBITMQ_PASS:guest}
+
+rabbitmq:
+  host: ${RABBITMQ_HOST:rabbitmq}
+  port: ${RABBITMQ_PORT:5672}
+  username: ${RABBITMQ_USER:guest}
+  password: ${RABBITMQ_PASS:guest}
+  queue:
+    email: ${RABBITMQ_QUEUE_EMAIL:email.queue}
+    failed: failed.queue
+    exchange: ${RABBITMQ_EXCHANGE:notifications.direct}
+    routing-key: email.routing.key
+    failed-routing-key: failed.routing.key
+
+sendgrid:
+  api-key: ${SENDGRID_API_KEY}
+  from-email: ${SENDGRID_EMAIL}
+  timeout-ms: 5000
+
+template-service:
+  base-url: ${TEMPLATE_SERVICE_URL:http://template_service:5000}
+  render-endpoint: /api/v1/templates/render
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      sendGridCircuit:
+        registerHealthIndicator: true
+        slidingWindowType: COUNT_BASED
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 2
+        failureRateThreshold: 50
+        waitDurationInOpenState: 30s
+  retry:
+    instances:
+      sendGridRetry:
+        maxAttempts: 3
+        waitDuration: 2s
+        exponentialBackoffMultiplier: 2
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+logging:
+  level:
+    root: INFO

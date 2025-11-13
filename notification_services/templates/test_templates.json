@@ -1,0 +1,99 @@
+[
+  {
+    "code": "welcome-email",
+    "name": "Welcome Email",
+    "description": "Sent to new users upon registration.",
+    "subject": "Welcome to Our Service, {{ user.name }}!",
+    "body": "Hi {{ user.name }},
+    Welcome to our service! We are excited to have you on board."
+  },
+  {
+    "code": "password-reset",
+    "name": "Password Reset",
+    "description": "Sent to users who request a password reset.",
+    "subject": "Password Reset Request",
+    "body": "Hi {{ user.name }},
+    Please click the following link to reset your password: {{ reset_link }}"
+  },
+  {
+    "code": "order-confirmation",
+    "name": "Order Confirmation",
+    "description": "Sent to users after they place an order.",
+    "subject": "Your Order #{{ order.id }} is Confirmed!",
+    "body": "Hi {{ user.name }},
+    Thank you for your order! Your order number is {{ order.id }}.
+Items:
+{% for item in order.items %}
+- {{ item.name }}: ${{ item.price }}
+{% endfor %}
+
+Total: ${{ order.total }}"
+  },
+  {
+    "code": "shipping-notification",
+    "name": "Shipping Notification",
+    "description": "Sent to users when their order has shipped.",
+    "subject": "Your Order #{{ order.id }} Has Shipped!",
+    "body": "Hi {{ user.name }},
+
+Good news! Your order #{{ order.id }} has shipped. You can track your package here: {{ tracking_link }}"
+  },
+  {
+    "code": "account-verification",
+    "name": "Account Verification",
+    "description": "Sent to new users to verify their email address.",
+    "subject": "Verify Your Email Address",
+    "body": "Hi {{ user.name }},
+
+Please click the following link to verify your email address: {{ verification_link }}"
+  },
+  {
+    "code": "newsletter-subscription",
+    "name": "Newsletter Subscription",
+    "description": "Sent to users who subscribe to the newsletter.",
+    "subject": "You're Subscribed!",
+    "body": "Hi {{ user.name }},
+
+Thank you for subscribing to our newsletter. You will now receive updates from us."
+  },
+  {
+    "code": "trial-ending-reminder",
+    "name": "Trial Ending Reminder",
+    "description": "Sent to users whose free trial is about to expire.",
+    "subject": "Your Free Trial is Ending Soon",
+    "body": "Hi {{ user.name }},
+
+Your free trial will end in {{ trial_days_left }} days. Upgrade to a paid plan to continue using our service: {{ upgrade_link }}"
+  },
+  {
+    "code": "invoice-payment-due",
+    "name": "Invoice Payment Due",
+    "description": "Sent to users when an invoice payment is due.",
+    "subject": "Invoice #{{ invoice.id }} is due",
+    "body": "Hi {{ user.name }},
+
+This is a reminder that invoice #{{ invoice.id }} for ${{ invoice.amount }} is due on {{ invoice.due_date }}. You can view and pay the invoice here: {{ invoice_link }}"
+  },
+  {
+    "code": "new-feature-announcement",
+    "name": "New Feature Announcement",
+    "description": "Sent to users to announce a new feature.",
+    "subject": "New Feature: {{ feature.name }}",
+    "body": "Hi {{ user.name }},
+
+We are excited to announce a new feature: {{ feature.name }}!
+
+{{ feature.description }}
+
+You can learn more about it here: {{ feature_link }}"
+  },
+  {
+    "code": "user-invitation",
+    "name": "User Invitation",
+    "description": "Sent to invite a new user to a team or organization.",
+    "subject": "You've been invited to join {{ organization.name }}",
+    "body": "Hi {{ new_user.name }},
+{{ inviter.name }} has invited you to join the {{ organization.name }} organization. Click the link below to accept the invitation:
+{{ invitation_link }}"
+  }
+]
