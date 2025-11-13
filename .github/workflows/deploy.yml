@@ -1,0 +1,88 @@
+name: Deploy to GCP VM
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+env:
+  GCP_PROJECT_ID: your-gcp-project-id
+  GCP_VM_NAME: notification-service-vm
+  GCP_ZONE: us-central1-a
+  DEPLOY_DIR: /home/hauwamuktar880/notification-service-10
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3 # Updated version
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v1
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v1
+
+      - name: Copy .env files (if needed)
+        run: |
+          # Skip if .env is in repo (not recommended for secrets!)
+          # Otherwise, create .env from GitHub secrets
+          gcloud compute ssh ${{ env.GCP_VM_NAME }} \
+            --zone=${{ env.GCP_ZONE }} \
+            --command="echo '${{ secrets.ENV_FILE }}' > ${{ env.DEPLOY_DIR }}/.env"
+
+      - name: Deploy to GCP VM
+        run: |
+          gcloud compute ssh ${{ env.GCP_VM_NAME }} \
+            --zone=${{ env.GCP_ZONE }} \
+            --command="
+              set -e
+              cd ${{ env.DEPLOY_DIR }}
+              echo '=== Pulling latest code ==='
+              git fetch origin
+              git reset --hard origin/master
+              echo '=== Stopping containers ==='
+              docker compose down
+              echo '=== Building and starting services ==='
+              docker compose up -d --build
+              echo '=== Waiting for services to start ==='
+              sleep 10
+              echo '=== Checking container status ==='
+              docker compose ps
+            "
+
+      - name: Verify deployment
+        run: |
+          echo "Waiting for services to be ready..."
+          sleep 20
+
+          gcloud compute ssh ${{ env.GCP_VM_NAME }} \
+            --zone=${{ env.GCP_ZONE }} \
+            --command="
+              echo 'Testing gateway health endpoint...'
+              curl -f http://localhost:3000/health || echo 'Gateway not ready'
+              
+              echo 'Testing user service...'
+              curl -f http://localhost:3001/health || echo 'User service not ready'
+              
+              echo 'Checking all containers...'
+              docker compose ps
+              
+              echo 'Recent logs from gateway...'
+              docker logs gateway --tail 20
+            "
+
+      - name: Cleanup on failure
+        if: failure()
+        run: |
+          echo "Deployment failed! Checking logs..."
+          gcloud compute ssh ${{ env.GCP_VM_NAME }} \
+            --zone=${{ env.GCP_ZONE }} \
+            --command="
+              cd ${{ env.DEPLOY_DIR }}
+              docker compose logs --tail 50
+            "
