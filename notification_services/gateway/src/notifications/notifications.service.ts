@@ -34,15 +34,17 @@ export class NotificationsService {
       if (cached) {
         // Check if the cached response shows the notification is still queued
         const statusData = await this.redisService.getCachedStatus(requestId);
-        
+
         if (statusData && statusData.status === 'queued') {
           // Still in queue, requeue it
           console.log(`Request ${requestId} is still queued. Re-queueing...`);
-          
+
           // Fetch user and template data again
           const userData = await this.userService.getUserById(dto.user_id);
-          const template = await this.templateService.getTemplate(dto.template_code);
-          
+          const template = await this.templateService.getTemplate(
+            dto.template_code,
+          );
+
           // Create queue message
           const notificationQueueItem: NotificationMessage = {
             channel: dto.channel as 'email' | 'push',
@@ -64,11 +66,15 @@ export class NotificationsService {
 
           // Re-queue the message
           if (dto.channel === 'email') {
-            await this.rabbitMQService.publishToEmailQueue(notificationQueueItem);
+            await this.rabbitMQService.publishToEmailQueue(
+              notificationQueueItem,
+            );
           } else {
-            await this.rabbitMQService.publishToPushQueue(notificationQueueItem);
+            await this.rabbitMQService.publishToPushQueue(
+              notificationQueueItem,
+            );
           }
-          
+
           return {
             success: true,
             message: 'Notification re-queued successfully',
@@ -86,16 +92,18 @@ export class NotificationsService {
             },
           };
         }
-        
+
         // Build appropriate message based on status
         let message = 'Notification already processed';
-        let note = 'This request was already processed. Returning existing result.';
-        
+        let note =
+          'This request was already processed. Returning existing result.';
+
         if (statusData) {
           switch (statusData.status) {
             case 'processing':
               message = 'Notification is currently being processed';
-              note = 'This request is currently being processed. Please wait for completion.';
+              note =
+                'This request is currently being processed. Please wait for completion.';
               break;
             case 'delivered':
               message = 'Notification delivered successfully';
@@ -103,11 +111,12 @@ export class NotificationsService {
               break;
             case 'failed':
               message = 'Notification delivery failed';
-              note = 'This notification failed to deliver. Check the error details for more information.';
+              note =
+                'This notification failed to deliver. Check the error details for more information.';
               break;
           }
         }
-        
+
         // Update cached response with appropriate message
         const updatedResponse = {
           ...cached,
@@ -117,7 +126,7 @@ export class NotificationsService {
             note,
           },
         };
-        
+
         return updatedResponse;
       }
 
@@ -130,8 +139,9 @@ export class NotificationsService {
         // Request was already processed but cache expired
         // Reconstruct response from database with appropriate messaging
         let message = 'Notification already processed';
-        let note = 'This request was already processed. Returning existing result.';
-        
+        let note =
+          'This request was already processed. Returning existing result.';
+
         switch (existingNotification.status) {
           case 'queued':
             message = 'Notification is queued';
@@ -139,7 +149,8 @@ export class NotificationsService {
             break;
           case 'processing':
             message = 'Notification is currently being processed';
-            note = 'This request is currently being processed. Please wait for completion.';
+            note =
+              'This request is currently being processed. Please wait for completion.';
             break;
           case 'delivered':
             message = 'Notification delivered successfully';
@@ -147,10 +158,11 @@ export class NotificationsService {
             break;
           case 'failed':
             message = 'Notification delivery failed';
-            note = 'This notification failed to deliver. Check the error details for more information.';
+            note =
+              'This notification failed to deliver. Check the error details for more information.';
             break;
         }
-        
+
         const response: NotificationResponseDto = {
           success: true,
           message,

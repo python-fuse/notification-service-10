@@ -124,6 +124,39 @@ services:
     depends_on:
       - postgres_template
 
+  email_service:
+    build:
+      context: ./notification_services/email_service
+    container_name: email_service
+    env_file:
+      - .env
+    ports:
+      - "8080:8080"
+    depends_on:
+      - rabbitmq
+      - redis
+      - template_service
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - SENDGRID_API_KEY=${SENDGRID_API_KEY}
+
+  push_service:
+    build:
+      context: ./notification_services/push_service
+    container_name: push_service
+    env_file:
+      - .env
+    ports:
+      - "9090:9090"
+    depends_on:
+      - rabbitmq
+      - redis
+      - template_service
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - ONESIGNAL_API_KEY=${ONESIGNAL_API_KEY}
+      - ONESIGNAL_APP_ID=${ONESIGNAL_APP_ID}
+
 
 
   # worker:
